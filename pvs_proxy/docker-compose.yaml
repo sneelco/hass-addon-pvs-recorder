@@ -1,0 +1,10 @@
+services:
+  nginx:
+    image: nginxinc/nginx-unprivileged
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:z
+    ports:
+      - 9002:9002
+      - 9080:9080
+      - 9502:9502

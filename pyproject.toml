@@ -1,0 +1,31 @@
+[project]
+name = "pvs_recorder"
+version = "0.1.0"
+description = "Query a PVS and publish to MQTT"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.28.1",
+    "paho-mqtt>=2.1.0",
+    "pydantic>=2.11.7",
+    "websockets>=15.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.5",
+]
+
+[tool.ruff]
+lint.select = [ "ALL" ]
+lint.ignore = ["D400", "D401", "D415", "PGH003", "ANN001", "ERA001", "ANN003"]
+line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+strict = true
+disable_error_code = ["import-untyped"]
+plugins = ["sqlalchemy.ext.mypy.plugin"]
+
