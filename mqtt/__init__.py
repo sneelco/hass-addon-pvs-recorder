@@ -34,7 +34,6 @@ class MqttClient:
 
     def _on_disconnect(self, *_args: any, **_kwargs) -> None:
         logger.info("Disconnected from MQTT Broker")
-        self.client.publish(topic=f"{self.topic}/status", payload="offline", qos=2, retain=True)
         self.connected = False
 
     async def run(self) -> None:
@@ -70,5 +69,6 @@ class MqttClient:
         self.is_running = False
 
         if self.client and self.connected:
+            self.client.publish(topic=f"{self.topic}/status", payload="offline", qos=2, retain=True)
             self.client.disconnect()
             self.client.loop_stop()
