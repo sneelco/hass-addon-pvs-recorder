@@ -29,11 +29,12 @@ class MqttClient:
         logger.info("Connected to MQTT Broker")
         sys.stdout.flush()
         self.connected = True
-        self.client.will_set(topic=f"{self.topic}/status", payload="offline", qos=1, retain=True)
-        self.client.publish(topic=f"{self.topic}/status", payload="online", qos=1, retain=True)
+        self.client.will_set(topic=f"{self.topic}/status", payload="offline", qos=2, retain=True)
+        self.client.publish(topic=f"{self.topic}/status", payload="online", qos=2, retain=True)
 
     def _on_disconnect(self, *_args: any, **_kwargs) -> None:
         logger.info("Disconnected from MQTT Broker")
+        self.client.publish(topic=f"{self.topic}/status", payload="offline", qos=2, retain=True)
         self.connected = False
 
     async def run(self) -> None:
