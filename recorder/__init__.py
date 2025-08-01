@@ -81,7 +81,7 @@ class Recorder:
         """Publish ESS data to the mqtt broker"""
 
         for key, value in data.items():
-            self.mqtt.publish(json.dumps(value), key)
+            self.mqtt.publish(json.dumps(value), key, retain=True)
             msg = f"Published {key} to MQTT: {value}"
             logger.info(msg)
 

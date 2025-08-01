@@ -1,6 +1,6 @@
 name: "PVS Recorder"
 description: "Retrieves data for the former SunPower PVS monitoring system"
-version: "1.1.0"
+version: "1.1.1"
 slug: "pvs"
 init: false
 url: https://github.com/sneelco/hassio-addon-pvs
