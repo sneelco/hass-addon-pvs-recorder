@@ -2,8 +2,12 @@
 
 from enum import Enum
 
+from ess.modbus import ModbusClient
+
 
 class ChargerStatus(Enum):
+    """Charger status"""
+
     NOT_CHARGING = 768
     BULK = 769
     ABSORPTION = 770
@@ -26,11 +30,14 @@ class ChargerStatus(Enum):
     GROUND_FAULT = 787
     AC_GOOD_PENDING = 788
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """String representation"""
         return self.name.replace("_", " ").title()
 
 
 class InverterStatus(Enum):
+    """Inverter status"""
+
     INVERT = 1024
     AC_PASS_THROUGH = 1025
     APS_ONLY = 1026
@@ -49,149 +56,155 @@ class InverterStatus(Enum):
     AC_COUPLING = 1039
     REVERSE_IBATT = 1040
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """String representation"""
         return self.name.replace("_", " ").title()
 
 
 class OperatingMode(Enum):
+    """Operating mode"""
+
     STANDBY = 2
     OPERATING = 3
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """String representation"""
         return self.name.replace("_", " ").title()
 
 
 class Inverter:
-    def __init__(self, client, device_id):
+    """Inverter device"""
+
+    def __init__(self, client: ModbusClient, device_id: int) -> None:
+        """Initialize the Inverter device"""
         self.client = client
         self.device_id = device_id
 
     @property
-    def manufacturer(self):
-        """"""
+    def manufacturer(self) -> str:
+        """Manufacturer"""
         return self.client.read_str(40004, 32, self.device_id)
 
     @property
-    def model(self):
-        """"""
+    def model(self) -> str:
+        """Model"""
         return self.client.read_str(40020, 32, self.device_id)
 
     @property
-    def version(self):
-        """"""
+    def version(self) -> str:
+        """Version"""
         return self.client.read_str(40044, 16, self.device_id)
 
     @property
-    def serial(self):
-        """"""
+    def serial(self) -> str:
+        """Serial"""
         return self.client.read_str(40052, 32, self.device_id)
 
     @property
-    def inverter_charger_output_energy_lifetime(self):
+    def inverter_charger_output_energy_lifetime(self) -> int:
         """Energy at the XFMR Lifetime"""
         value = self.client.read_uint32(40094, self.device_id) or 0
         return value * 0.001
 
     @property
-    def inverter_charger_dc_current(self):
+    def inverter_charger_dc_current(self) -> int:
         """Inverter-charger power module DC current (A)"""
-        value = self.client.read_uint16(40097, self.device_id) or 0
-        return value
+        return self.client.read_uint16(40097, self.device_id) or 0
 
     @property
-    def inverter_charger_dc_current_scaling(self):
+    def inverter_charger_dc_current_scaling(self) -> int:
         """Inverter-charger power module DC current scaling factor (A)"""
         value = self.client.read_int16(40098, self.device_id) or 0
         return value * 0.1
 
     @property
-    def inverter_charger_dc_voltage(self):
+    def inverter_charger_dc_voltage(self) -> int:
         """Inverter-charger power module DC voltage (V)"""
         value = self.client.read_uint16(40099, self.device_id) or 0
         return value * 0.1
 
     @property
-    def inverter_charger_dc_voltage_scaling(self):
+    def inverter_charger_dc_voltage_scaling(self) -> int:
         """Inverter-charger power module DC voltage (V)"""
         value = self.client.read_int16(40100, self.device_id) or 0
         return value * 0.1
 
     @property
-    def inverter_charger_dc_power(self):
+    def inverter_charger_dc_power(self) -> int:
         """Inverter-charger power module DC power (W)"""
         value = self.client.read_int16(40101, self.device_id) or 0
         return value * 0.1
 
     @property
-    def inverter_charger_dc_power_scaling(self):
+    def inverter_charger_dc_power_scaling(self) -> int:
         """Inverter-charger power module DC power scaling factor"""
         value = self.client.read_int16(40102, self.device_id) or 0
         return value * 0.1
 
     @property
-    def continuous_output_power(self):
+    def continuous_output_power(self) -> int:
         """Continuous power output capability of the inverter - Max (W)"""
         return self.client.read_int16(40125, self.device_id) or 0
 
     @property
-    def power_output_percent(self):
+    def power_output_percent(self) -> int:
         """Set power output to specified level."""
         value = self.client.read_uint16(40187, self.device_id) or 0
         return value * 0.01
 
     @property
-    def max_discharge_power_percent(self):
+    def max_discharge_power_percent(self) -> int:
         """EPC Maximum Discharge Power Percent"""
         value = self.client.read_uint16(40220, self.device_id) or 0
         return value * 0.01
 
-    def set_max_discharge_power_percent(self, value):
+    def set_max_discharge_power_percent(self, value: int) -> None:
         """EPC Maximum Discharge Power Percent"""
         self.client.write_uint16(40220, value, self.device_id) * 100
 
     @property
-    def max_charge_power_percent(self):
+    def max_charge_power_percent(self) -> int:
         """EPC Maximum Charge Power Percent"""
         value = self.client.read_uint16(40221, self.device_id) or 0
         return value * 0.01
 
-    def set_max_charge_power_percent(self):
+    def set_max_charge_power_percent(self, value: int) -> None:
         """EPC Maximum Charge Power Percent"""
-        self.client.write_uint16(40221, self.device_id) * 100
+        self.client.write_uint16(40221, value * 100, self.device_id)
 
     @property
-    def max_charge_power(self):
+    def max_charge_power(self) -> int:
         """Max charge power (W)"""
         return self.client.read_uint16(40238, self.device_id) or 0
 
     @property
-    def max_discharge_power(self):
+    def max_discharge_power(self) -> int:
         """Max discharge power (W)"""
         return self.client.read_uint16(40239, self.device_id) or 0
 
     @property
-    def inverter_status(self):
+    def inverter_status(self) -> InverterStatus | None:
         """Inverter status"""
         value = self.client.read_uint16(40252, self.device_id)
         return InverterStatus(value) if value is not None else None
 
     @property
-    def charger_status(self):
+    def charger_status(self) -> ChargerStatus | None:
         """Inverter status"""
         value = self.client.read_uint16(40253, self.device_id)
         return ChargerStatus(value) if value is not None else None
 
     @property
-    def mode(self):
+    def mode(self) -> OperatingMode | None:
         """Operating Mode"""
         value = self.client.read_uint16(40241, self.device_id)
         return OperatingMode(value) if value is not None else None
 
-    def set_mode(self, mode: OperatingMode):
+    def set_mode(self, mode: OperatingMode) -> None:
         """Set Operating Mode"""
         self.client.write_uint16(40241, mode.value, self.device_id)
 
-    def get_data(self):
+    def get_data(self) -> dict:
         """Get all data"""
         return {
             "manufacturer": self.manufacturer,

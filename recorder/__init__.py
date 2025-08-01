@@ -13,6 +13,19 @@ from pvs import PVSWebSocket
 
 logger = logging.getLogger(__name__)
 
+WS_PARAMS = [
+    "time",
+    "site_load_p",
+    "net_p",
+    "pv_p",
+    "site_load_en",
+    "net_en",
+    "pv_en",
+    "ess_p",
+    "ess_en",
+    "soc",
+]
+
 
 class Recorder:
     """Manages messages from the PVS and publishes them to an MQTT broker"""
@@ -55,20 +68,15 @@ class Recorder:
             self.last_record = current
 
             params = data.get("params")
-            self.mqtt.publish(params.get("site_load_p", 0), "site_load_p")
-            self.mqtt.publish(params.get("net_p", 0), "net_p")
-            self.mqtt.publish(params.get("pv_p", 0), "pv_p")
-            self.mqtt.publish(params.get("site_load_en", 0), "site_load_en")
-            self.mqtt.publish(params.get("net_en", 0), "net_en")
-            self.mqtt.publish(params.get("pv_en", 0), "pv_en")
+            log_msgs = []
+
+            for param in WS_PARAMS:
+                if param in params:
+                    self.mqtt.publish(params.get(param, 0), param)
+                    log_msgs.append(f"{param}: {params.get(param, 0)}")
 
             if (current - self.last_power) > self.WS_LOG_INTERVAL:
-                msg = (
-                    f"site_load_p: {params.get('site_load_p', 0)}, "
-                    f"net_p: {params.get('net_p', 0)}, pv_p: {params.get('pv_p', 0)}, "
-                    f"site_load_en: {params.get('site_load_en', 0)}, "
-                    f"net_en: {params.get('net_en', 0)}, pv_en: {params.get('pv_en', 0)}"
-                )
+                msg = ", ".join(log_msgs)
                 logger.info(msg)
                 self.last_power = current
             return
@@ -79,11 +87,12 @@ class Recorder:
 
     def publish_ess_data(self, data: any) -> None:
         """Publish ESS data to the mqtt broker"""
-
-        for key, value in data.items():
-            self.mqtt.publish(json.dumps(value), key, retain=True)
-            msg = f"Published {key} to MQTT: {value}"
-            logger.info(msg)
+        for device, device_data in data.items():
+            for key, value in device_data.items():
+                topic = f"{device}/{key}"
+                self.mqtt.publish(value, topic)
+                msg = f"Published {topic} to MQTT: {value}"
+                logger.info(msg)
 
     async def run(self) -> None:
         """Run the recorder"""

@@ -22,21 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 class ESS:
-    def __init__(self, ess_ip: str, ess_port502: int, ess_port503: int, device_file: str) -> None:
+    """ESS"""
+
+    def __init__(
+        self,
+        ess_ip: str,
+        ess_port502: int,
+        ess_port503: int,
+        device_file: str,
+    ) -> None:
+        """Initialize the ESS"""
         self.ess_ip = ess_ip
         self.ess_port502 = ess_port502
         self.ess_port503 = ess_port503
 
         with Path.open(device_file, "r") as f:
             self.device_map = json.load(f)
-
-        # self.device_map = [
-        #     {"device_id": 1, "type": "Gateway", "name": "Gateway"},
-        #     {"device_id": 10, "type": "Inverter", "name": "Inverter1"},
-        #     {"device_id": 11, "type": "Inverter", "name": "Inverter2"},
-        #     {"device_id": 230, "type": "Bms", "name": "BMS1"},
-        #     {"device_id": 231, "type": "Bms", "name": "BMS2"},
-        # ]
 
         self.on_message: Callable[[str], None] | None = None
         self.running = False
@@ -75,7 +76,7 @@ class ESS:
                 break
             await asyncio.sleep(5)
 
-    def query_devices(self):
+    def query_devices(self) -> dict:
         """Query all devices"""
         data = {}
         for device in self.device_map:
@@ -86,9 +87,8 @@ class ESS:
 
         return data
 
-    def init_devices(self):
-        """Get a device by its ID"""
-
+    def init_devices(self) -> None:
+        """Initialize all devices"""
         for device in self.device_map:
             if "502" in DEVICE_MAP.get(device.get("type"), None) and "502" not in device:
                 device["502"] = DEVICE_MAP.get(device["type"])["502"](
@@ -107,13 +107,3 @@ class ESS:
         self.running = False
         self.client502.disconnect()
         self.client503.disconnect()
-
-
-if __name__ == "__main__":
-    ess = ESS(
-        ess_ip="10.0.1.12",
-        ess_port502=5502,
-        ess_port503=5503,
-    )
-
-    asyncio.run(ess.run())

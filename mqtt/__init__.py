@@ -56,7 +56,11 @@ class MqttClient:
             await asyncio.sleep(1)
 
     def publish(
-        self, message: str, topic: str | None = None, qos: int = 1, retain: bool = False
+        self,
+        message: str,
+        topic: str | None = None,
+        qos: int = 1,
+        retain: bool = False,  # noqa: FBT001, FBT002
     ) -> None:
         """Publish a message"""
         publish_topic = f"{self.topic}/{topic}" if topic is not None else self.topic

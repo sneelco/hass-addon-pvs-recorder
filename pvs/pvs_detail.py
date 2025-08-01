@@ -119,12 +119,12 @@ class PVSDetail:
 
     def load_file(self, file_path: str) -> dict:
         """Load the file"""
-        with open(file_path, "r") as file:
+        with Path(file_path).open("r") as file:
             self.pvs_detail_raw = json.load(file)
 
     def write_data(self, file_path: str) -> None:
         """Write the data to a file"""
-        with Path.open(file_path, "w") as file:
+        with Path(file_path).open("w") as file:
             json.dump(self.pvs_detail_raw, file, indent=4)
 
     def get_meters(self) -> list[PVSMeter]:
@@ -155,22 +155,3 @@ class PVSDetail:
             )
             for solar_inverter in solar_inverters
         ]
-
-
-if __name__ == "__main__":
-    pvs_detail = PVSDetail("10.0.1.12", 9080)
-    # pvs_detail.load_file("output_example.json")
-    pvs_detail.get_pvs_detail()
-    pvs_detail.write_data("output_example_latest.json")
-    meters = pvs_detail.get_meters()
-    solar_inverters = pvs_detail.get_solar_inverters()
-
-    count = 0
-    for panel in solar_inverters:
-        count += 1
-
-        print(
-            f"Panel {count} ({panel.serial}): "
-            f"{panel.voltage}V at {panel.current}A for {panel.power}W. "
-            f"Total Production: {panel.energy}kWh",
-        )
