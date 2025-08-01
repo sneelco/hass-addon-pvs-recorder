@@ -17,10 +17,24 @@ options:
   pvs_ws_port: 9002
   pvs_ws_secure: false
   mqtt_topic: pvs
+  ess_host: 172.27.153.171
+  ess_port: 502
+  ess_port_503: 503
+  ess_devices:
+    - device_id: 1
+      type: Gateway
+      name: Gateway
 schema:
   pvs_host: str
-  pvs_ws_port: int
+  pvs_ws_port: port
   pvs_ws_secure: bool
+  ess_host: str
+  ess_port: port
+  ess_port_503: port
+  ess_devices:
+    - device_id: int
+      type: list("Gateway", "Inverter", "Bms")
+      name: str
   mqtt_host: "str?"
   mqtt_port: "port?"
   mqtt_username: "str?"

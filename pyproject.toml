@@ -8,6 +8,7 @@ dependencies = [
     "httpx>=0.28.1",
     "paho-mqtt>=2.1.0",
     "pydantic>=2.11.7",
+    "pymodbus>=3.10.0",
     "websockets>=15.0.1",
 ]
 

@@ -97,6 +97,7 @@ dependencies = [
     { name = "httpx" },
     { name = "paho-mqtt" },
     { name = "pydantic" },
+    { name = "pymodbus" },
     { name = "websockets" },
 ]
 
@@ -110,6 +111,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "paho-mqtt", specifier = ">=2.1.0" },
     { name = "pydantic", specifier = ">=2.11.7" },
+    { name = "pymodbus", specifier = ">=3.10.0" },
     { name = "websockets", specifier = ">=15.0.1" },
 ]
 
@@ -171,6 +173,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/7d/e09391c2eebeab681df2b74bfe6c43422fffede8dc74187b2b0bf6fd7571/pydantic_core-2.33.2-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:61c18fba8e5e9db3ab908620af374db0ac1baa69f0f32df4f61ae23f15e586ac", size = 1806162, upload-time = "2025-04-23T18:32:20.188Z" },
     { url = "https://files.pythonhosted.org/packages/f1/3d/847b6b1fed9f8ed3bb95a9ad04fbd0b212e832d4f0f50ff4d9ee5a9f15cf/pydantic_core-2.33.2-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:95237e53bb015f67b63c91af7518a62a8660376a6a0db19b89acc77a4d6199f5", size = 1981560, upload-time = "2025-04-23T18:32:22.354Z" },
     { url = "https://files.pythonhosted.org/packages/6f/9a/e73262f6c6656262b5fdd723ad90f518f579b7bc8622e43a942eec53c938/pydantic_core-2.33.2-cp313-cp313t-win_amd64.whl", hash = "sha256:c2fc0a768ef76c15ab9238afa6da7f69895bb5d1ee83aeea2e3509af4472d0b9", size = 1935777, upload-time = "2025-04-23T18:32:25.088Z" },
+]
+
+[[package]]
+name = "pymodbus"
+version = "3.10.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/72/7216de673d0e0a2b22f0be98a84f851430ae176d8a82c0b15d3d30bc3854/pymodbus-3.10.0.tar.gz", hash = "sha256:5b7ce71f9da2fabd1f8484de564a7e2c56085e94e3d4ee2a0fbc14c59dfa9da7", size = 161033, upload-time = "2025-07-27T21:15:35.759Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/94/3d063134f944f8a8089963c15449d4453bcd65b8982bdf08c89d32f89210/pymodbus-3.10.0-py3-none-any.whl", hash = "sha256:146f7cc9cafd9edcaf427f3a822852395961dd2ba0bfc0069d18c2a94607304a", size = 163457, upload-time = "2025-07-27T21:15:33.843Z" },
 ]
 
 [[package]]

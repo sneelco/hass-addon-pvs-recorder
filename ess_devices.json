@@ -1,0 +1,7 @@
+[
+  {"device_id": 1, "type": "Gateway", "name": "Gateway"},
+  {"device_id": 10, "type": "Inverter", "name": "Inverter1"},
+  {"device_id": 11, "type": "Inverter", "name": "Inverter2"},
+  {"device_id": 230, "type": "Bms", "name": "BMS1"},
+  {"device_id": 231, "type": "Bms", "name": "BMS2"}
+]

@@ -7,6 +7,7 @@ import signal
 import sys
 from datetime import datetime
 
+from ess import ESS
 from mqtt import MqttClient
 from pvs import PVSWebSocket
 
@@ -19,13 +20,15 @@ class Recorder:
     WS_RECORD_INTERVAL = 10
     WS_LOG_INTERVAL = 60
 
-    def __init__(self, pvsws: PVSWebSocket, mqtt: MqttClient) -> None:
+    def __init__(self, pvsws: PVSWebSocket, mqtt: MqttClient, ess: ESS) -> None:
         """Returns instance of Recorder"""
         self.pvsws = pvsws
         self.mqtt = mqtt
+        self.ess = ess
         self.loop = None
 
         self.pvsws.on_message = self.publish_message
+        self.ess.on_message = self.publish_ess_data
 
         self.last_power = 0
         self.last_record = 0
@@ -74,6 +77,14 @@ class Recorder:
         msg = json.dumps(data, indent=2, ensure_ascii=False)
         logger.info(msg)
 
+    def publish_ess_data(self, data: any) -> None:
+        """Publish ESS data to the mqtt broker"""
+
+        for key, value in data.items():
+            self.mqtt.publish(json.dumps(value), key)
+            msg = f"Published {key} to MQTT: {value}"
+            logger.info(msg)
+
     async def run(self) -> None:
         """Run the recorder"""
         self.last_power = 0
@@ -94,12 +105,14 @@ class Recorder:
         await asyncio.gather(
             self.mqtt.run(),
             self.pvsws.run(),
+            self.ess.run(),
         )
 
     async def _cleanup(self) -> None:
         """Cleanup PVS and Mqtt and stop the main loop"""
         await self.pvsws.stop()
         await self.mqtt.stop()
+        await self.ess.stop()
         await asyncio.sleep(5)
         self.loop.stop()
 
@@ -107,4 +120,3 @@ class Recorder:
         """Handler for when signals are caught"""
         logger.info("Received shutdown signal")
         self.loop.create_task(self._cleanup())
-
