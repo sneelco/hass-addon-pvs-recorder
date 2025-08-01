@@ -11,4 +11,3 @@ wheels/
 
 # Virtual environments
 .venv
-*.json
