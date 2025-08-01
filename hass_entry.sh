@@ -16,11 +16,11 @@ export ESS_PORT=$(bashio::config 'ess_port')
 export ESS_PORT_503=$(bashio::config 'ess_port_503')
 export ESS_DEVICES=$(bashio::config 'ess_devices')
 
-echo "ESS_DEVICES: $ESS_DEVICES"
 
-pwd
+# Transform newline-separated JSON objects into a JSON array and save to file
+echo "[$(echo "$ESS_DEVICES" | sed '/^\s*$/d' | paste -sd, -)]" > /data/ess_devices.json
 
-echo "$ESS_DEVICES" > ess_devices.json
+cat /data/ess_devices.json
 
 exit 0
 
