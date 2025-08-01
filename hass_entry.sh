@@ -11,6 +11,19 @@ export PVS_HOST=$(bashio::config 'pvs_host')
 export PVS_WS_PORT=$(bashio::config 'pvs_ws_port')
 export PVS_WS_SECURE=$(bashio::config 'pvs_ws_secure')
 
+export ESS_HOST=$(bashio::config 'ess_host')
+export ESS_PORT=$(bashio::config 'ess_port')
+export ESS_PORT_503=$(bashio::config 'ess_port_503')
+export ESS_DEVICES=$(bashio::config 'ess_devices')
+
+echo "ESS_DEVICES: $ESS_DEVICES"
+
+pwd
+
+echo "$ESS_DEVICES" > ess_devices.json
+
+exit 0
+
 if [ "$PVS_WS_SECURE" == "true" ]; then
   uv run pvs_recorder.py --pvs-ws-secure
 else
