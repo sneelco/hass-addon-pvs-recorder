@@ -183,6 +183,30 @@ class Inverter503:
         return value * 0.001
 
     @property
+    def grid_input_energy_month(self):
+        """"""
+        value = self.client.read_uint32(268, self.device_id) or 0
+        return value * 0.001
+
+    @property
+    def grid_output_energy_month(self):
+        """"""
+        value = self.client.read_uint32(292, self.device_id) or 0
+        return value * 0.001
+
+    @property
+    def grid_input_energy_year(self):
+        """"""
+        value = self.client.read_uint32(272, self.device_id) or 0
+        return value * 0.001
+
+    @property
+    def grid_output_energy_year(self):
+        """"""
+        value = self.client.read_uint32(296, self.device_id) or 0
+        return value * 0.001
+
+    @property
     def max_charge_rate(self):
         """"""
         value = self.client.read_uint16(367, self.device_id) or 0
@@ -228,6 +252,6 @@ class Inverter503:
             "max_charge_rate": self.max_charge_rate,
             "inverter_enabled": self.inverter_enabled.name,
             "max_discharge_current": self.max_discharge_current,
-            "grid_input_energy_month": self.grid_input_energy_month,
-            "grid_output_energy_month": self.grid_output_energy_month,
+            "grid_input_energy_year": self.grid_input_energy_year,
+            "grid_output_energy_year": self.grid_output_energy_year,
         }
