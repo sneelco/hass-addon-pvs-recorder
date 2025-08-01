@@ -15,11 +15,11 @@ WORKDIR /app
 RUN uv sync --frozen
 RUN rm -rf /tmp/*
 
-ARG UID=1000
-ARG GID=1000
+# ARG UID=1000
+# ARG GID=1000
 
-RUN addgroup -g $GID pvs
-RUN adduser -D -u $UID -G pvs pvs
-USER pvs
+# RUN addgroup -g $GID pvs
+# RUN adduser -D -u $UID -G pvs pvs
+# USER pvs
 
 CMD ["/app/hass_entry.sh"]
