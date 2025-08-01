@@ -1,6 +1,6 @@
 name: "PVS Recorder"
 description: "Retrieves data for the former SunPower PVS monitoring system"
-version: "1.0.5"
+version: "1.0.7"
 slug: "pvs"
 init: false
 url: https://github.com/sneelco/hassio-addon-pvs
@@ -33,7 +33,7 @@ schema:
   ess_port_503: port
   ess_devices:
     - device_id: int
-      type: list(Gateway,Inverter,Bms)
+      type: list(Gateway|Inverter|Bms)
       name: str
   mqtt_host: "str?"
   mqtt_port: "port?"
