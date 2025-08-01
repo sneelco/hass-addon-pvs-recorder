@@ -6,14 +6,14 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .devices import Bms, Gateway, Inverter, Inverter503
+from .devices import Bms, Gateway, Gateway503, Inverter, Inverter503
 from .modbus import ModbusClient
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 DEVICE_MAP = {
-    "Gateway": {"502": Gateway},
+    "Gateway": {"502": Gateway, "503": Gateway503},
     "Inverter": {"502": Inverter, "503": Inverter503},
     "Bms": {"502": Bms},
 }
