@@ -55,12 +55,14 @@ class MqttClient:
             self.client.loop_start()
             await asyncio.sleep(1)
 
-    def publish(self, message: str, topic: str | None = None, qos: int = 1) -> None:
+    def publish(
+        self, message: str, topic: str | None = None, qos: int = 1, retain: bool = False
+    ) -> None:
         """Publish a message"""
         publish_topic = f"{self.topic}/{topic}" if topic is not None else self.topic
 
         if self.connected:
-            self.client.publish(publish_topic, message, qos=qos)
+            self.client.publish(publish_topic, message, qos=qos, retain=retain)
         else:
             logger.error("Could not publish due to MQTT being disconnected")
 
