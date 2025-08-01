@@ -20,12 +20,8 @@ export ESS_DEVICES=$(bashio::config 'ess_devices')
 # Transform newline-separated JSON objects into a JSON array and save to file
 echo "[$(echo "$ESS_DEVICES" | sed '/^\s*$/d' | paste -sd, -)]" > /data/ess_devices.json
 
-cat /data/ess_devices.json
-
-exit 0
-
 if [ "$PVS_WS_SECURE" == "true" ]; then
-  uv run pvs_recorder.py --pvs-ws-secure
+  uv run pvs_recorder.py --pvs-ws-secure --ess-device-file /data/ess_devices.json
 else
-  uv run pvs_recorder.py
+  uv run pvs_recorder.py --ess-device-file /data/ess_devices.json
 fi
