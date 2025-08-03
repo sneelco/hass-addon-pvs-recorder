@@ -1,9 +1,21 @@
 services:
+  nginx-config-generator:
+    image: alpine
+    environment:
+      - ALLOWED_IPS=${ALLOWED_IPS:-all}
+    volumes:
+      - nginx-config:/etc/nginx/conf.d:U
+      - ./scripts:/scripts:ro,z
+    command: /scripts/generate-config.sh
   nginx:
     image: nginxinc/nginx-unprivileged
+    depends_on:
+      nginx-config-generator:
+        condition: service_completed_successfully
     restart: always
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:z
+      - nginx-config:/etc/nginx/conf.d:ro
     ports:
       - 9002:9002
       - 9080:9080
@@ -11,3 +23,6 @@ services:
       - 5503:5503
       - 5080:5080
       - 5443:5443
+
+volumes:
+  nginx-config:
