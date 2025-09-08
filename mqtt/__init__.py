@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sys
+from typing import Any
 
 import paho.mqtt.client as mqtt
 
@@ -25,16 +26,49 @@ class MqttClient:
         self.client = None
         self.connected = False
 
-    def _on_connect(self, *_args: any, **_kwargs) -> None:
-        logger.info("Connected to MQTT Broker")
-        sys.stdout.flush()
-        self.connected = True
-        self.client.will_set(topic=f"{self.topic}/status", payload="offline", qos=2, retain=True)
-        self.client.publish(topic=f"{self.topic}/status", payload="online", qos=2, retain=True)
+    def _on_connect(
+        self,
+        _client: mqtt.Client,
+        _userdata: Any,  # noqa: ANN401
+        _flags: dict,
+        reason_code: int,
+        _properties: Any = None,  # noqa: ANN401
+    ) -> None:
+        if reason_code == 0:
+            logger.info("Connected to MQTT Broker")
+            sys.stdout.flush()
+            self.connected = True
+            # Publish online status
+            self.client.publish(topic=f"{self.topic}/status", payload="online", qos=2, retain=True)
+        else:
+            msg = f"Failed to connect to MQTT broker. Reason code: {reason_code}"
+            logger.error(msg)
+            self.connected = False
 
-    def _on_disconnect(self, *_args: any, **_kwargs) -> None:
-        logger.info("Disconnected from MQTT Broker")
+    def _on_disconnect(
+        self,
+        _client: mqtt.Client,
+        _userdata: Any,  # noqa: ANN401
+        _disconnect_flags: dict,
+        reason_code: int,
+        _properties: Any = None,  # noqa: ANN401
+    ) -> None:
+        """Callback for when the client disconnects from the broker."""
+        msg = f"Disconnected from MQTT Broker. Reason code: {reason_code}"
+        logger.info(msg)
         self.connected = False
+
+    def _on_publish(
+        self,
+        _client: mqtt.Client,
+        _userdata: Any,  # noqa: ANN401
+        mid: int,
+        _reason_code: int,
+        _properties: Any = None,  # noqa: ANN401
+    ) -> None:
+        """Callback for when a message is published."""
+        msg = f"Published message with ID {mid}"
+        logger.debug(msg)
 
     async def run(self) -> None:
         """Connect to the broker and start the loop"""
@@ -49,9 +83,20 @@ class MqttClient:
             self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
             if self.username is not None:
                 self.client.username_pw_set(self.username, self.password)
+
+            will_topic = f"{self.topic}/status"
+            self.client.will_set(
+                topic=will_topic,
+                payload="offline",
+                qos=2,
+                retain=True,
+                properties=None,
+            )
+
             self.client.connect(host=self.host, port=self.port)
             self.client.on_connect = self._on_connect
             self.client.on_disconnect = self._on_disconnect
+            self.client.on_publish = self._on_publish
             self.client.loop_start()
             await asyncio.sleep(1)
 
@@ -72,9 +117,16 @@ class MqttClient:
 
     async def stop(self) -> None:
         """Disconnect and stop the client"""
+        logger.debug("Stopping MQTT client...")
         self.is_running = False
 
         if self.client and self.connected:
+            logger.debug("Publishing offline status...")
             self.client.publish(topic=f"{self.topic}/status", payload="offline", qos=2, retain=True)
+
+            # Wait a moment for the message to be sent
+            await asyncio.sleep(0.5)
+
             self.client.disconnect()
             self.client.loop_stop()
+            logger.debug("MQTT client stopped")
