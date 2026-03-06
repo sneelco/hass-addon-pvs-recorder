@@ -111,11 +111,18 @@ class Recorder:
             )
             logger.info(msg)
 
-        await asyncio.gather(
+        results = await asyncio.gather(
             self.mqtt.run(),
             self.pvsws.run(),
             self.ess.run(),
+            return_exceptions=True,
         )
+
+        names = ["MQTT", "PVS WebSocket", "ESS"]
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                msg = f"{names[i]} task failed: {result}"
+                logger.error(msg)
 
     async def _cleanup(self) -> None:
         """Cleanup PVS and Mqtt and stop the main loop"""

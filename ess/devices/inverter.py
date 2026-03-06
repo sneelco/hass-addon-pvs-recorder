@@ -211,7 +211,7 @@ class Inverter:
             "model": self.model,
             "version": self.version,
             "serial": self.serial,
-            "mode": self.mode.name,
-            "inverter_status": self.inverter_status.name,
-            "charger_status": self.charger_status.name,
+            "mode": self.mode.name if self.mode else None,
+            "inverter_status": self.inverter_status.name if self.inverter_status else None,
+            "charger_status": self.charger_status.name if self.charger_status else None,
         }

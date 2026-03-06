@@ -73,9 +73,20 @@ class MqttClient:
     async def run(self) -> None:
         """Connect to the broker and start the loop"""
         self.is_running = True
+        heartbeat_interval = 60
+        last_heartbeat = 0
 
         while self.is_running:
             if self.client and self.connected:
+                now = asyncio.get_event_loop().time()
+                if (now - last_heartbeat) >= heartbeat_interval:
+                    self.client.publish(
+                        topic=f"{self.topic}/status",
+                        payload="online",
+                        qos=2,
+                        retain=True,
+                    )
+                    last_heartbeat = now
                 await asyncio.sleep(1)
                 continue
 
@@ -84,21 +95,27 @@ class MqttClient:
             if self.username is not None:
                 self.client.username_pw_set(self.username, self.password)
 
-            will_topic = f"{self.topic}/status"
             self.client.will_set(
-                topic=will_topic,
+                topic=f"{self.topic}/status",
                 payload="offline",
                 qos=2,
                 retain=True,
                 properties=None,
             )
 
-            self.client.connect(host=self.host, port=self.port)
             self.client.on_connect = self._on_connect
             self.client.on_disconnect = self._on_disconnect
             self.client.on_publish = self._on_publish
-            self.client.loop_start()
-            await asyncio.sleep(1)
+
+            try:
+                self.client.connect(host=self.host, port=self.port, keepalive=60)
+                self.client.loop_start()
+            except Exception as e:
+                msg = f"Failed to connect to MQTT broker: {e}"
+                logger.error(msg)
+                self.client = None
+
+            await asyncio.sleep(5)
 
     def publish(
         self,

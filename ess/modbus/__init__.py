@@ -77,15 +77,11 @@ class ModbusClient:
 
     def read_holding_registers(self, address: int, count: int, device_id: int) -> list[int] | None:
         """Read holding registers"""
+        result = None
         attempts = 0
         max_attempts = 3
 
         while attempts < max_attempts:
-            if max_attempts == attempts:
-                msg = f"Connection error for device {device_id}, attempt {attempts}/{max_attempts}"
-                logger.exception(msg)
-                return None
-
             try:
                 result = self.client.read_holding_registers(
                     address=address,
@@ -96,13 +92,11 @@ class ModbusClient:
             except ConnectionException:
                 attempts += 1
                 msg = f"Connection error for device {device_id}, attempt {attempts}/{max_attempts}"
-                logger.exception(msg)
-
+                logger.warning(msg)
                 self.connect()
-
                 sleep(1)
 
-        if result.isError():
+        if result is None or result.isError():
             return None
 
         return result.registers

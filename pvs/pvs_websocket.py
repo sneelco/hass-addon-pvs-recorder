@@ -105,7 +105,7 @@ class PVSWebSocket:
             return False
         except Exception as e:
             msg = f"Error receiving message: {e}"
-            logger.exception()
+            logger.exception(msg)
             return False
 
         return True

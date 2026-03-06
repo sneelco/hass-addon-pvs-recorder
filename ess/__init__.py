@@ -57,20 +57,33 @@ class ESS:
 
     def connect(self) -> None:
         """Connect to the ESS"""
-        self.client502.connect()
-        self.client503.connect()
+        try:
+            self.client502.connect()
+        except Exception as e:
+            msg = f"Failed to connect Modbus 502: {e}"
+            logger.error(msg)
+        try:
+            self.client503.connect()
+        except Exception as e:
+            msg = f"Failed to connect Modbus 503: {e}"
+            logger.error(msg)
 
     async def run(self) -> None:
         """Run the ESS"""
         self.running = True
 
         while self.running:
-            if not self.client502.connected or not self.client503.connected:
-                self.connect()
-                self.init_devices()
+            try:
+                if not self.client502.connected or not self.client503.connected:
+                    self.connect()
+                    self.init_devices()
 
-            data = self.query_devices()
-            self.on_message(data)
+                data = self.query_devices()
+                if self.on_message is not None:
+                    self.on_message(data)
+            except Exception as e:
+                msg = f"ESS error: {e}"
+                logger.error(msg)
 
             if not self.running:
                 break

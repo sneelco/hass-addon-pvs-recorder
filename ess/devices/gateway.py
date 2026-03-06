@@ -145,23 +145,22 @@ class Gateway:
         return self.client.read_uint16(40255, self.device_id)
 
     @property
-    def charge_status(self) -> int:
+    def charge_status(self) -> BatteryState | None:
         """Current charge status of the battery bank."""
         value = self.client.read_uint16(40260, self.device_id)
-
-        return BatteryState(value)
+        return BatteryState(value) if value is not None else None
 
     @property
-    def battery_type(self) -> BatteryType:
+    def battery_type(self) -> BatteryType | None:
         """Type of battery bank."""
         value = self.client.read_uint16(40265, self.device_id)
-        return BatteryType(value)
+        return BatteryType(value) if value is not None else None
 
     @property
-    def battery_state(self) -> BatteryState:
+    def battery_state(self) -> BatteryState | None:
         """Current state of the battery bank."""
         value = self.client.read_uint16(40266, self.device_id)
-        return BatteryState(value)
+        return BatteryState(value) if value is not None else None
 
     @property
     def battery_power(self) -> int:
@@ -203,5 +202,5 @@ class Gateway:
             "version": self.version,
             "serial": self.serial,
             "battery_soc": self.battery_soc,
-            "battery_state": self.battery_state.name,
+            "battery_state": self.battery_state.name if self.battery_state else None,
         }

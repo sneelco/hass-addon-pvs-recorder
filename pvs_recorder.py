@@ -72,4 +72,9 @@ if __name__ == "__main__":
 
     recorder = Recorder(pvsws, mqtt, ess)
 
-    asyncio.run(recorder.run())
+    try:
+        asyncio.run(recorder.run())
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested via keyboard")
+    except Exception as e:
+        logger.exception(f"Fatal error: {e}")
