@@ -1,8 +1,8 @@
 """Base module for PVS"""
 
-from pvs.pvs_websocket import PVSWebSocket
+from pvs.pvs_vars import PVSAuthError, PVSVars
 
 __all__ = [
-    "PVSWebSocket",
+    "PVSAuthError",
+    "PVSVars",
 ]
-

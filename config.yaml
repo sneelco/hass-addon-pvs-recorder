@@ -1,6 +1,6 @@
 name: "PVS Recorder"
 description: "Retrieves data for the former SunPower PVS monitoring system"
-version: "1.1.6"
+version: "1.2.0"
 slug: "pvs"
 init: false
 url: https://github.com/sneelco/hassio-addon-pvs
@@ -16,8 +16,10 @@ services:
   - mqtt:want
 options:
   pvs_host: 172.27.153.1
-  pvs_ws_port: 9002
-  pvs_ws_secure: false
+  pvs_port: 443
+  pvs_user: ssm_owner
+  pvs_password: ""
+  pvs_poll_interval: 10
   mqtt_topic: pvs
   ess_host: 172.27.153.171
   ess_port: 502
@@ -28,8 +30,10 @@ options:
       name: Gateway
 schema:
   pvs_host: str
-  pvs_ws_port: port
-  pvs_ws_secure: bool
+  pvs_port: port
+  pvs_user: str
+  pvs_password: password
+  pvs_poll_interval: int(1,)
   ess_host: str
   ess_port: port
   ess_port_503: port

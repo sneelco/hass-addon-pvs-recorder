@@ -1,7 +1,6 @@
 """Recorder module"""
 
 import asyncio
-import json
 import logging
 import signal
 import sys
@@ -9,11 +8,15 @@ from datetime import datetime
 
 from ess import ESS
 from mqtt import MqttClient
-from pvs import PVSWebSocket
+from pvs import PVSVars
 
 logger = logging.getLogger(__name__)
 
-WS_PARAMS = [
+LIVEDATA_PREFIX = "/sys/livedata/"
+DEVICES_PREFIX = "/sys/devices/"
+
+# Livedata values summarized in the periodic log line
+LOG_PARAMS = [
     "time",
     "site_load_p",
     "net_p",
@@ -26,64 +29,88 @@ WS_PARAMS = [
     "soc",
 ]
 
+# Individual vars published as-is. Anything not listed here or under the livedata/devices
+# prefixes is ignored (notably /sys/info/ssid and /sys/info/wpa_key, which are secrets).
+EXTRA_VARS = {
+    "/sys/info/serialnum": "info/serialnum",
+    "/sys/info/model": "info/model",
+    "/sys/info/hwrev": "info/hwrev",
+    "/sys/info/sw_rev": "info/sw_rev",
+    "/sys/info/uptime": "info/uptime",
+    "/sys/info/sys_type": "info/sys_type",
+    "/sys/info/ram_usage": "info/ram_usage",
+    "/sys/info/flash_usage": "info/flash_usage",
+    "/sys/info/cpu_usage": "info/cpu_usage",
+    "/ess/config/dcm/mode_param/control_mode": "ess_config/control_mode",
+    "/ess/config/dcm/control_param/min_customer_soc": "ess_config/min_customer_soc",
+}
+
+
+def _sanitize_topic_part(value: str) -> str:
+    """Make a value safe to use as a single MQTT topic level"""
+    for char in ("/", "+", "#"):
+        value = value.replace(char, "_")
+    return value.strip() or "unknown"
+
 
 class Recorder:
     """Manages messages from the PVS and publishes them to an MQTT broker"""
 
-    WS_RECORD_INTERVAL = 10
-    WS_LOG_INTERVAL = 60
+    LOG_INTERVAL = 60
 
-    def __init__(self, pvsws: PVSWebSocket, mqtt: MqttClient, ess: ESS) -> None:
+    def __init__(self, pvs: PVSVars, mqtt: MqttClient, ess: ESS) -> None:
         """Returns instance of Recorder"""
-        self.pvsws = pvsws
+        self.pvs = pvs
         self.mqtt = mqtt
         self.ess = ess
         self.loop = None
 
-        self.pvsws.on_message = self.publish_message
+        self.pvs.on_message = self.publish_pvs_data
         self.ess.on_message = self.publish_ess_data
 
-        self.last_power = 0
-        self.last_record = 0
+        self.last_log = 0
 
-    def publish_message(self, data: any) -> None:
-        """Publishes a message to the mqtt broker"""
+    def publish_pvs_data(self, data: dict[str, str]) -> None:
+        """Publish polled PVS vars to the mqtt broker
+
+        - ``/sys/livedata/<key>`` is published to ``<key>`` (same topics the websocket used)
+        - ``/sys/devices/<type>/<index>/<field>`` is published to
+          ``devices/<type>/<serial>/<field>`` (falls back to the index when no serial)
+        - a small set of system info / ESS config vars is published per ``EXTRA_VARS``
+        """
         current = datetime.now().timestamp()  # noqa: DTZ005
 
-        try:
-            # Parse JSON message
-            data = json.loads(data)
+        livedata: dict[str, str] = {}
+        devices: dict[tuple[str, str], dict[str, str]] = {}
 
-        except json.JSONDecodeError as e:
-            msg = f"Invalid JSON received: {e}"
-            logger.exception(msg)
-            msg = f"Raw message: {data}"
-            logger.info(msg)
-            return
+        for name, value in data.items():
+            if name.startswith(LIVEDATA_PREFIX):
+                livedata[name.removeprefix(LIVEDATA_PREFIX)] = value
+            elif name.startswith(DEVICES_PREFIX):
+                parts = name.removeprefix(DEVICES_PREFIX).split("/")
+                if len(parts) != 3:  # noqa: PLR2004
+                    continue
+                dev_type, index, field = parts
+                devices.setdefault((dev_type, index), {})[field] = value
+            elif name in EXTRA_VARS:
+                self.mqtt.publish(value, EXTRA_VARS[name])
 
-        if data.get("notification") == "power":
-            if (current - self.last_record) < self.WS_RECORD_INTERVAL:
-                return
+        for key, value in livedata.items():
+            self.mqtt.publish(value, _sanitize_topic_part(key))
 
-            self.last_record = current
+        for (dev_type, index), fields in devices.items():
+            device_id = _sanitize_topic_part(fields.get("sn") or index)
+            base = f"devices/{_sanitize_topic_part(dev_type)}/{device_id}"
+            for field, value in fields.items():
+                self.mqtt.publish(value, f"{base}/{_sanitize_topic_part(field)}")
 
-            params = data.get("params")
-            log_msgs = []
+        msg = f"Published {len(livedata)} livedata values and {len(devices)} devices"
+        logger.debug(msg)
 
-            for param in WS_PARAMS:
-                if param in params:
-                    self.mqtt.publish(params.get(param, 0), param)
-                    log_msgs.append(f"{param}: {params.get(param, 0)}")
-
-            if (current - self.last_power) > self.WS_LOG_INTERVAL:
-                msg = ", ".join(log_msgs)
-                logger.info(msg)
-                self.last_power = current
-            return
-
-        # Print formatted JSON to console
-        msg = json.dumps(data, indent=2, ensure_ascii=False)
-        logger.info(msg)
+        if (current - self.last_log) > self.LOG_INTERVAL:
+            msg = ", ".join(f"{p}: {livedata[p]}" for p in LOG_PARAMS if p in livedata)
+            logger.info(msg or "No livedata values received from PVS")
+            self.last_log = current
 
     def publish_ess_data(self, data: any) -> None:
         """Publish ESS data to the mqtt broker"""
@@ -96,7 +123,7 @@ class Recorder:
 
     async def run(self) -> None:
         """Run the recorder"""
-        self.last_power = 0
+        self.last_log = 0
 
         self.loop = asyncio.get_running_loop()
 
@@ -104,22 +131,21 @@ class Recorder:
             for sig in (signal.SIGTERM, signal.SIGINT):
                 self.loop.add_signal_handler(sig, self._signal_handler)
 
-        if self.WS_LOG_INTERVAL > 0:
-            msg = (
-                f"WebSocket log supression enabled, will log messages no more then once every "
-                f"{self.WS_LOG_INTERVAL} seconds"
-            )
-            logger.info(msg)
+        msg = (
+            f"Polling PVS every {self.pvs.poll_interval} seconds, will log a summary no more "
+            f"than once every {self.LOG_INTERVAL} seconds"
+        )
+        logger.info(msg)
 
         await asyncio.gather(
             self.mqtt.run(),
-            self.pvsws.run(),
+            self.pvs.run(),
             self.ess.run(),
         )
 
     async def _cleanup(self) -> None:
         """Cleanup PVS and Mqtt and stop the main loop"""
-        await self.pvsws.stop()
+        await self.pvs.stop()
         await self.mqtt.stop()
         await self.ess.stop()
         await asyncio.sleep(5)
