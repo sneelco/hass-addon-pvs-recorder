@@ -6,7 +6,9 @@ HTTPS endpoint (``/vars``) that must be polled. A session cookie is obtained by 
 """
 
 import asyncio
+import ipaddress
 import logging
+import socket
 from typing import TYPE_CHECKING
 
 import httpx
@@ -40,6 +42,8 @@ class PVSVars:
     ) -> None:
         """Initialize the PVS vars client"""
         port = int(port)
+        self.host = host
+        self.port = port
         self.base_url = f"https://{host}" if port == 443 else f"https://{host}:{port}"  # noqa: PLR2004
         self.username = username
         self.password = password
@@ -51,6 +55,7 @@ class PVSVars:
         self.retry_delay = retry_delay
 
         self.client: httpx.AsyncClient | None = None
+        self.extensions: dict[str, str] = {}
         self.authenticated = False
         self.running = False
         self.on_message: Callable[[dict[str, str]], None] | None = None
@@ -63,17 +68,43 @@ class PVSVars:
             timeout=self.timeout,
         )
 
+    async def _resolve_sni_override(self) -> dict[str, str]:
+        """Suppress TLS SNI when the PVS is addressed by hostname
+
+        The PVS rejects any SNI name it does not recognize with an ``unrecognized_name`` alert,
+        which happens when it is reached through a proxy or DNS name. Python never sends SNI for
+        an IP address, so resolve the hostname and hand httpx the IP as the SNI hostname. The
+        request URL (and therefore cookie handling) keeps using the configured host.
+        """
+        try:
+            ipaddress.ip_address(self.host)
+        except ValueError:
+            pass
+        else:
+            return {}
+
+        loop = asyncio.get_running_loop()
+        infos = await loop.getaddrinfo(self.host, self.port, type=socket.SOCK_STREAM)
+        address = infos[0][4][0]
+        msg = f"Resolved PVS host {self.host} to {address}; connecting without TLS SNI"
+        logger.debug(msg)
+        return {"sni_hostname": address}
+
+    async def _get(self, path: str, **kwargs) -> httpx.Response:
+        return await self.client.get(path, extensions=self.extensions, **kwargs)
+
     async def login(self) -> None:
         """Retrieve a new session from the PVS"""
         if self.client is not None:
             await self.client.aclose()
         self.client = self._new_client()
         self.authenticated = False
+        self.extensions = await self._resolve_sni_override()
 
         msg = f"Logging in to PVS at {self.base_url} as {self.username}..."
         logger.info(msg)
 
-        response = await self.client.get(
+        response = await self._get(
             "/auth?login",
             auth=httpx.BasicAuth(self.username, self.password),
         )
@@ -94,12 +125,12 @@ class PVSVars:
         if not self.authenticated or self.client is None:
             await self.login()
 
-        response = await self.client.get(self.vars_path)
+        response = await self._get(self.vars_path)
 
         if response.status_code in (HTTP_UNAUTHORIZED, HTTP_FORBIDDEN):
             logger.info("PVS session expired, logging in again")
             await self.login()
-            response = await self.client.get(self.vars_path)
+            response = await self._get(self.vars_path)
 
         response.raise_for_status()
         return self.parse(response.json())
@@ -133,7 +164,7 @@ class PVSVars:
                 logger.exception("PVS authentication failed, check the PVS username/password")
                 self.authenticated = False
                 delay = self.retry_delay
-            except (httpx.HTTPError, ValueError) as e:
+            except (httpx.HTTPError, OSError, ValueError) as e:
                 msg = f"Error polling PVS: {e!r}"
                 logger.error(msg)  # noqa: TRY400
                 self.authenticated = False
