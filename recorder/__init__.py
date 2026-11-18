@@ -1,14 +1,20 @@
 """Recorder module"""
 
 import asyncio
+import json
 import logging
+import os
 import signal
 import sys
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from ess import ESS
 from mqtt import MqttClient
 from pvs import PVSVars
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +63,11 @@ class Recorder:
     """Manages messages from the PVS and publishes them to an MQTT broker"""
 
     LOG_INTERVAL = 60
+    RESTART_DELAY = 5
+    MAX_RESTART_DELAY = 300
+    # A poll cycle normally takes seconds; well beyond any backoff means a component is hung
+    HANG_TIMEOUT = 600
+    WATCHDOG_INTERVAL = 30
 
     def __init__(self, pvs: PVSVars, mqtt: MqttClient, ess: ESS) -> None:
         """Returns instance of Recorder"""
@@ -69,6 +80,8 @@ class Recorder:
         self.ess.on_message = self.publish_ess_data
 
         self.last_log = 0
+        self.stopping = False
+        self.tasks: list[asyncio.Task] = []
 
     def publish_pvs_data(self, data: dict[str, str]) -> None:
         """Publish polled PVS vars to the mqtt broker
@@ -112,18 +125,81 @@ class Recorder:
             logger.info(msg or "No livedata values received from PVS")
             self.last_log = current
 
-    def publish_ess_data(self, data: any) -> None:
-        """Publish ESS data to the mqtt broker"""
+    def publish_ess_data(self, data: dict[str, dict]) -> None:
+        """Publish ESS data to the mqtt broker
+
+        Values that could not be read (None) are skipped rather than published, so Home
+        Assistant keeps the last good value instead of seeing an empty or zero reading.
+        """
+        published = skipped = 0
         for device, device_data in data.items():
             for key, value in device_data.items():
+                if value is None:
+                    skipped += 1
+                    continue
+                if not isinstance(value, (str, bytes, int, float)):
+                    value = json.dumps(value, default=str)  # noqa: PLW2901
                 topic = f"{device}/{key}"
                 self.mqtt.publish(value, topic)
+                published += 1
                 msg = f"Published {topic} to MQTT: {value}"
-                logger.info(msg)
+                logger.debug(msg)
+
+        msg = f"Published {published} ESS values ({skipped} unavailable)"
+        logger.debug(msg)
+
+    async def _supervise(self, name: str, run: "Callable[[], Awaitable[None]]") -> None:
+        """Run a component forever, restarting it with a backoff if it crashes or exits"""
+        delay = self.RESTART_DELAY
+        while not self.stopping:
+            started = asyncio.get_running_loop().time()
+            try:
+                await run()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                msg = f"{name} crashed, restarting in {delay}s"
+                logger.exception(msg)
+            else:
+                if self.stopping:
+                    return
+                msg = f"{name} exited unexpectedly, restarting in {delay}s"
+                logger.warning(msg)
+
+            # Reset the backoff if the component had been running fine for a while
+            if asyncio.get_running_loop().time() - started > self.MAX_RESTART_DELAY:
+                delay = self.RESTART_DELAY
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, self.MAX_RESTART_DELAY)
+
+    async def _watchdog(self) -> None:
+        """Exit the process if a poller stops cycling, so the Supervisor restarts the add-on
+
+        The pollers handle their own errors and keep cycling even when their device is
+        unreachable, so a stale heartbeat means something is hung (e.g. a blocked Modbus call in
+        its worker thread) that cannot be recovered in-process.
+        """
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        while not self.stopping:
+            await asyncio.sleep(self.WATCHDOG_INTERVAL)
+            now = loop.time()
+            for name, component in (("PVS", self.pvs), ("ESS", self.ess)):
+                last = component.last_cycle if component.last_cycle is not None else started
+                if now - last > self.HANG_TIMEOUT and not self.stopping:
+                    msg = (
+                        f"{name} poller has not completed a cycle in {int(now - last)}s, "
+                        "exiting so the add-on is restarted"
+                    )
+                    logger.critical(msg)
+                    logging.shutdown()
+                    # A hung worker thread would block a normal interpreter shutdown
+                    os._exit(1)
 
     async def run(self) -> None:
         """Run the recorder"""
         self.last_log = 0
+        self.stopping = False
 
         self.loop = asyncio.get_running_loop()
 
@@ -137,21 +213,39 @@ class Recorder:
         )
         logger.info(msg)
 
-        await asyncio.gather(
-            self.mqtt.run(),
-            self.pvs.run(),
-            self.ess.run(),
-        )
+        self.tasks = [
+            asyncio.create_task(self._supervise("MQTT", self.mqtt.run)),
+            asyncio.create_task(self._supervise("PVS", self.pvs.run)),
+            asyncio.create_task(self._supervise("ESS", self.ess.run)),
+            asyncio.create_task(self._watchdog()),
+        ]
+
+        try:
+            await asyncio.gather(*self.tasks)
+        except asyncio.CancelledError:
+            if not self.stopping:
+                raise
+
+        logger.info("Shutdown complete")
 
     async def _cleanup(self) -> None:
-        """Cleanup PVS and Mqtt and stop the main loop"""
-        await self.pvs.stop()
-        await self.mqtt.stop()
-        await self.ess.stop()
-        await asyncio.sleep(5)
-        self.loop.stop()
+        """Stop all components, then cancel their tasks"""
+        self.stopping = True
+        components = (("PVS", self.pvs.stop), ("ESS", self.ess.stop), ("MQTT", self.mqtt.stop))
+        for name, stop in components:
+            try:
+                await asyncio.wait_for(stop(), timeout=5)
+            except Exception:  # noqa: BLE001
+                msg = f"Error stopping {name}"
+                logger.warning(msg, exc_info=True)
+
+        for task in self.tasks:
+            task.cancel()
 
     def _signal_handler(self) -> None:
         """Handler for when signals are caught"""
+        if self.stopping:
+            return
         logger.info("Received shutdown signal")
+        self.stopping = True
         self.loop.create_task(self._cleanup())

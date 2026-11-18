@@ -277,7 +277,25 @@ uv run ruff check .
 uv run mypy .
 ```
 
-## Troubleshooting
+## Resilience
+
+The recorder is built to keep running through outages of any one dependency:
+
+- **MQTT**: a single client is kept for the life of the process and paho reconnects it in the
+  background (1–60s backoff). While disconnected, readings are dropped rather than queued, and
+  `<topic>/status` is re-published as `online` every 60 seconds.
+- **PVS**: errors are logged and polling retries every 30 seconds; the session is renewed
+  automatically when it expires.
+- **ESS (Modbus)**: Modbus I/O runs in a worker thread so a slow or unreachable ESS cannot stall
+  anything else. A lost connection fails the rest of that cycle fast and reconnects with a
+  5–60s backoff. Registers that cannot be read are skipped instead of being published as 0, and
+  unknown status codes are published as empty with a single warning.
+- **Supervision**: if a component crashes it is restarted with a backoff (5s up to 5 minutes).
+  If a poller stops completing cycles for 10 minutes (i.e. something is hung), the process exits
+  with a non-zero status so the Home Assistant Supervisor watchdog restarts the add-on. Enable
+  the add-on's **Watchdog** toggle for this to take effect.
+
+
 
 ### Connection Issues
 

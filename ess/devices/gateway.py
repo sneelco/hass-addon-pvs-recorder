@@ -2,6 +2,7 @@
 
 from enum import Enum
 
+from ess.devices.util import enum_name, to_enum
 from ess.modbus import ModbusClient
 
 
@@ -145,23 +146,22 @@ class Gateway:
         return self.client.read_uint16(40255, self.device_id)
 
     @property
-    def charge_status(self) -> int:
+    def charge_status(self) -> BatteryState | None:
         """Current charge status of the battery bank."""
         value = self.client.read_uint16(40260, self.device_id)
-
-        return BatteryState(value)
+        return to_enum(BatteryState, value)
 
     @property
-    def battery_type(self) -> BatteryType:
+    def battery_type(self) -> BatteryType | None:
         """Type of battery bank."""
         value = self.client.read_uint16(40265, self.device_id)
-        return BatteryType(value)
+        return to_enum(BatteryType, value)
 
     @property
-    def battery_state(self) -> BatteryState:
+    def battery_state(self) -> BatteryState | None:
         """Current state of the battery bank."""
         value = self.client.read_uint16(40266, self.device_id)
-        return BatteryState(value)
+        return to_enum(BatteryState, value)
 
     @property
     def battery_power(self) -> int:
@@ -186,14 +186,14 @@ class Gateway:
     @property
     def inverter_charger_output_energy_lifetime(self) -> int:
         """Inverter charger Power module Output Energy Lifetime"""
-        value = self.client.read_uint32(40094, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(40094, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def inverter_charger_input_energy_lifetime(self) -> int:
         """Inverter charger Power module Input Energy Lifetime"""
-        value = self.client.read_uint32(40310, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(40310, self.device_id)
+        return value * 0.001 if value is not None else None
 
     def get_data(self) -> dict:
         """Get all data"""
@@ -203,5 +203,5 @@ class Gateway:
             "version": self.version,
             "serial": self.serial,
             "battery_soc": self.battery_soc,
-            "battery_state": self.battery_state.name,
+            "battery_state": enum_name(self.battery_state),
         }

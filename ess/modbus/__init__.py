@@ -2,10 +2,9 @@
 
 import logging
 import sys
-from time import sleep
 
 from pymodbus.client import ModbusTcpClient
-from pymodbus.exceptions import ConnectionException
+from pymodbus.exceptions import ConnectionException, ModbusException
 
 from .decoder import PayloadDecoder
 from .encoder import PayloadEncoder
@@ -20,25 +19,35 @@ class ModbusClientError(Exception):
 class ModbusClient:
     """Modbus client"""
 
-    def __init__(self, ip: str, port: int) -> None:
+    def __init__(self, ip: str, port: int, timeout: float = 3, retries: int = 1) -> None:
         """Initialize the Modbus client"""
-        self.client = ModbusTcpClient(ip, port=port)
+        self.ip = ip
+        self.port = port
+        # Keep per-request time bounded: pymodbus retries internally on top of the timeout
+        self.client = ModbusTcpClient(ip, port=int(port), timeout=timeout, retries=retries)
         self.connected = False
         self.endian = ">"
         self.decoder = PayloadDecoder
         self.encoder = PayloadEncoder
 
-    def connect(self) -> None:
+    def connect(self) -> bool:
         """Connect to the Modbus server"""
-        self.connected = self.client.connect()
+        try:
+            self.connected = bool(self.client.connect())
+        except Exception as e:  # noqa: BLE001
+            msg = f"Modbus connect to {self.ip}:{self.port} failed: {e}"
+            logger.warning(msg)
+            self.connected = False
+        return self.connected
 
     def disconnect(self) -> None:
         """Disconnect from the Modbus server"""
-        if not self.connected:
-            return
-
-        self.client.close()
         self.connected = False
+        try:
+            self.client.close()
+        except Exception as e:  # noqa: BLE001
+            msg = f"Error closing Modbus connection to {self.ip}:{self.port}: {e}"
+            logger.debug(msg)
 
     def scan_device(
         self,
@@ -76,31 +85,30 @@ class ModbusClient:
         return results
 
     def read_holding_registers(self, address: int, count: int, device_id: int) -> list[int] | None:
-        """Read holding registers"""
-        attempts = 0
-        max_attempts = 3
+        """Read holding registers
 
-        while attempts < max_attempts:
-            if max_attempts == attempts:
-                msg = f"Connection error for device {device_id}, attempt {attempts}/{max_attempts}"
-                logger.exception(msg)
-                return None
+        Returns None on any failure. A lost connection marks the client disconnected so the
+        remaining reads in a cycle fail fast and the ESS loop reconnects with a backoff, instead
+        of every register retrying (and blocking) on its own.
+        """
+        if not self.connected:
+            return None
 
-            try:
-                result = self.client.read_holding_registers(
-                    address=address,
-                    count=count,
-                    device_id=device_id,
-                )
-                break
-            except ConnectionException:
-                attempts += 1
-                msg = f"Connection error for device {device_id}, attempt {attempts}/{max_attempts}"
-                logger.exception(msg)
-
-                self.connect()
-
-                sleep(1)
+        try:
+            result = self.client.read_holding_registers(
+                address=address,
+                count=count,
+                device_id=device_id,
+            )
+        except ConnectionException as e:
+            msg = f"Modbus connection to {self.ip}:{self.port} lost: {e}"
+            logger.warning(msg)
+            self.disconnect()
+            return None
+        except ModbusException as e:
+            msg = f"Modbus read of {address} on device {device_id} failed: {e}"
+            logger.debug(msg)
+            return None
 
         if result.isError():
             return None

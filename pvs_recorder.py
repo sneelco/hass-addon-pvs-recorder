@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import logging
 import os
+import sys
 
 from ess import ESS
 from mqtt import MqttClient
@@ -89,4 +90,11 @@ if __name__ == "__main__":
 
     recorder = Recorder(pvs, mqtt, ess)
 
-    asyncio.run(recorder.run())
+    try:
+        asyncio.run(recorder.run())
+    except KeyboardInterrupt:
+        logger.info("Shutdown requested via keyboard")
+    except Exception:
+        # Exit non-zero: the Supervisor watchdog only restarts an add-on that failed
+        logger.exception("Fatal error")
+        sys.exit(1)
