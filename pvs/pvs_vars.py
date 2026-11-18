@@ -53,6 +53,9 @@ class PVSVars:
         self.client: httpx.AsyncClient | None = None
         self.authenticated = False
         self.running = False
+        # Event loop time of the last completed poll cycle (success or failure), used by the
+        # recorder to detect a hung poller
+        self.last_cycle: float | None = None
         self.on_message: Callable[[dict[str, str]], None] | None = None
 
     def _new_client(self) -> httpx.AsyncClient:
@@ -141,6 +144,8 @@ class PVSVars:
             except Exception:
                 logger.exception("Unexpected error polling PVS")
                 delay = self.retry_delay
+
+            self.last_cycle = loop.time()
 
             if not self.running:
                 break

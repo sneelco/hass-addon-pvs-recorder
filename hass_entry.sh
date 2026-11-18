@@ -26,4 +26,7 @@ export ESS_DEVICES=$(bashio::config 'ess_devices')
 # Transform newline-separated JSON objects into a JSON array and save to file
 echo "[$(echo "$ESS_DEVICES" | sed '/^\s*$/d' | paste -sd, -)]" > /data/ess_devices.json
 
-uv run pvs_recorder.py --ess-device-file /data/ess_devices.json
+# exec so the recorder receives SIGTERM directly and its exit code becomes the add-on's exit code
+# (the Supervisor watchdog restarts the add-on on a non-zero exit). The venv was built at image
+# build time, so there is no need for uv to re-check the environment on every start.
+exec /app/.venv/bin/python /app/pvs_recorder.py --ess-device-file /data/ess_devices.json

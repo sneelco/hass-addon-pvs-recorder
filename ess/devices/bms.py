@@ -2,6 +2,7 @@
 
 from enum import Enum
 
+from ess.devices.util import enum_name, to_enum
 from ess.modbus import ModbusClient
 
 
@@ -107,51 +108,51 @@ class Bms:
     @property
     def full_charge_capacity(self) -> int:
         """Full Charge Capacity (mAh)"""
-        return self.client.read_uint16(40072, self.device_id) or 0
+        return self.client.read_uint16(40072, self.device_id)
 
     @property
     def energy_capacity(self) -> int:
         """Nameplate Energy Capacity"""
-        return self.client.read_uint16(40073, self.device_id) or 0
+        return self.client.read_uint16(40073, self.device_id)
 
     @property
     def max_charge_rate(self) -> int:
         """Nameplate Max Charge Rate"""
-        return self.client.read_uint16(40074, self.device_id) or 0
+        return self.client.read_uint16(40074, self.device_id)
 
     @property
     def max_discharge_rate(self) -> int:
         """Nameplate Max Discharge Rate"""
-        return self.client.read_uint16(40075, self.device_id) or 0
+        return self.client.read_uint16(40075, self.device_id)
 
     @property
     def soc(self) -> int:
         """State of Charge (%)"""
-        return self.client.read_uint16(40081, self.device_id) or 0
+        return self.client.read_uint16(40081, self.device_id)
 
     @property
     def control_mode(self) -> ControlMode:
         """Control Mode"""
         value = self.client.read_uint16(40087, self.device_id)
-        return ControlMode(value) if value is not None else None
+        return to_enum(ControlMode, value)
 
     @property
     def battery_type(self) -> BatteryType:
         """Battery Type"""
         value = self.client.read_uint16(40091, self.device_id)
-        return BatteryType(value) if value is not None else None
+        return to_enum(BatteryType, value)
 
     @property
     def battery_state(self) -> BatteryState | None:
         """Battery State"""
         value = self.client.read_uint16(40092, self.device_id)
-        return BatteryState(value) if value is not None else None
+        return to_enum(BatteryState, value)
 
     @property
     def state(self) -> State | None:
         """State"""
         value = self.client.read_uint16(40093, self.device_id)
-        return State(value) if value is not None else None
+        return to_enum(State, value)
 
     @property
     def alerm_events(self) -> dict[str, bool]:
@@ -187,20 +188,20 @@ class Bms:
     @property
     def voltage(self) -> int:
         """Voltage (V)"""
-        value = self.client.read_uint16(40104, self.device_id) or 0
-        return value * 0.01
+        value = self.client.read_uint16(40104, self.device_id)
+        return value * 0.01 if value is not None else None
 
     @property
     def current(self) -> int:
         """Current (A)"""
-        value = self.client.read_int16(40114, self.device_id) or 0
-        return value * 0.01
+        value = self.client.read_int16(40114, self.device_id)
+        return value * 0.01 if value is not None else None
 
     @property
     def power(self) -> int:
         """Power (W)"""
-        value = self.client.read_int16(40115, self.device_id) or 0
-        return value * 0.01
+        value = self.client.read_int16(40115, self.device_id)
+        return value * 0.01 if value is not None else None
 
     def get_data(self) -> dict:
         """Get all data"""
@@ -209,8 +210,8 @@ class Bms:
             "model": self.model,
             "version": self.version,
             "serial": self.serial,
-            "battery_type": self.battery_type.name if self.battery_type else None,
-            "state": self.state.name if self.state else None,
+            "battery_type": enum_name(self.battery_type),
+            "state": enum_name(self.state),
             "voltage": self.voltage,
             "current": self.current,
             "power": self.power,

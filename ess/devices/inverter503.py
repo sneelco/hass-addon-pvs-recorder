@@ -2,6 +2,7 @@
 
 from enum import Enum
 
+from ess.devices.util import enum_name, to_enum
 from ess.modbus import ModbusClient
 
 
@@ -94,119 +95,119 @@ class Inverter503:
     @property
     def dc_voltage(self) -> int:
         """DC voltage"""
-        value = self.client.read_uint32(80, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(80, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def dc_current(self) -> int:
         """DC current"""
-        value = self.client.read_int32(82, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_int32(82, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac1_voltage(self) -> int:
         """AC1 voltage"""
-        value = self.client.read_uint32(98, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(98, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac1_current(self) -> int:
         """AC1 current"""
-        value = self.client.read_int32(100, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_int32(100, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac1_power(self) -> int:
         """AC1 power"""
-        return self.client.read_int32(102, self.device_id) or 0
+        return self.client.read_int32(102, self.device_id)
 
     @property
     def ac1_l1_voltage(self) -> int:
         """AC1 L1 voltage"""
-        value = self.client.read_uint32(110, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(110, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac1_l2_voltage(self) -> int:
         """AC1 L2 voltage"""
-        value = self.client.read_uint32(114, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(114, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac1_l1_current(self) -> int:
         """AC1 L1 current"""
-        value = self.client.read_int32(116, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_int32(116, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac1_l2_current(self) -> int:
         """AC1 L2 current"""
-        value = self.client.read_int32(112, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_int32(112, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac_load_voltage(self) -> int:
         """AC load voltage"""
-        value = self.client.read_uint32(140, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(140, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac_load_current(self) -> int:
         """AC load current"""
-        value = self.client.read_int32(150, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_int32(150, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac_load_power(self) -> int:
         """AC load power"""
-        return self.client.read_int32(154, self.device_id) or 0
+        return self.client.read_int32(154, self.device_id)
 
     @property
     def ac_load_l1_voltage(self) -> int:
         """AC load L1 voltage"""
-        value = self.client.read_uint32(142, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(142, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac_load_l2_voltage(self) -> int:
         """AC load L2 voltage"""
-        value = self.client.read_uint32(144, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(144, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac_load_l1_current(self) -> int:
         """AC load L1 current"""
-        value = self.client.read_int32(146, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_int32(146, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def ac_load_l2_current(self) -> int:
         """AC load L2 current"""
-        value = self.client.read_int32(148, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_int32(148, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def grid_input_energy_month(self) -> int:
         """Grid input energy month"""
-        value = self.client.read_uint32(268, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(268, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def grid_input_energy_year(self) -> int:
         """Grid input energy year"""
-        value = self.client.read_uint32(272, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(272, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def grid_output_energy_year(self) -> int:
         """Grid output energy year"""
-        value = self.client.read_uint32(296, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(296, self.device_id)
+        return value * 0.001 if value is not None else None
 
     @property
     def max_charge_rate(self) -> int:
         """Maximum Charge Rate (%)"""
-        return self.client.read_uint16(367, self.device_id) or 0
+        return self.client.read_uint16(367, self.device_id)
 
     def set_max_charge_rate(self, value: int) -> None:
         """Maximum Charge Rate (%)"""
@@ -215,8 +216,8 @@ class Inverter503:
     @property
     def charger_enabled(self) -> Enabled:
         """Charger enabled"""
-        value = self.client.read_uint16(356, self.device_id) or 0
-        return Enabled(value)
+        value = self.client.read_uint16(356, self.device_id)
+        return to_enum(Enabled, value)
 
     def set_charger_enabled(self, enabled: Enabled) -> None:
         """Charger enabled"""
@@ -225,8 +226,8 @@ class Inverter503:
     @property
     def inverter_enabled(self) -> Enabled:
         """Inverter enabled"""
-        value = self.client.read_uint16(353, self.device_id) or 0
-        return Enabled(value)
+        value = self.client.read_uint16(353, self.device_id)
+        return to_enum(Enabled, value)
 
     def set_inverter_enabled(self, enabled: Enabled) -> None:
         """Inverter enabled"""
@@ -235,13 +236,13 @@ class Inverter503:
     @property
     def max_discharge_current(self) -> int:
         """Maximum discharge current"""
-        return self.client.read_uint16(468, self.device_id) or 0
+        return self.client.read_uint16(468, self.device_id)
 
     @property
     def max_sell_amps(self) -> float:
         """Maximum Sell Amps"""
-        value = self.client.read_uint32(436, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(436, self.device_id)
+        return value * 0.001 if value is not None else None
 
     def set_max_sell_amps(self, value: float) -> None:
         """Maximum Sell Amps"""
@@ -250,8 +251,8 @@ class Inverter503:
     @property
     def load_shave_amps(self) -> float:
         """Load Shave Amps"""
-        value = self.client.read_uint32(438, self.device_id) or 0
-        return value * 0.001
+        value = self.client.read_uint32(438, self.device_id)
+        return value * 0.001 if value is not None else None
 
     def reboot(self) -> None:
         """Reboot the inverter"""
@@ -263,9 +264,9 @@ class Inverter503:
             "dc_voltage": self.dc_voltage,
             "dc_current": self.dc_current,
             "ac1_power": self.ac1_power,
-            "charger_enabled": self.charger_enabled.name,
+            "charger_enabled": enum_name(self.charger_enabled),
             "max_charge_rate": self.max_charge_rate,
-            "inverter_enabled": self.inverter_enabled.name,
+            "inverter_enabled": enum_name(self.inverter_enabled),
             "max_discharge_current": self.max_discharge_current,
             "grid_input_energy_year": self.grid_input_energy_year,
             "grid_output_energy_year": self.grid_output_energy_year,
