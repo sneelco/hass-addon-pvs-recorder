@@ -8,8 +8,14 @@ export MQTT_PASSWORD=$(bashio::config 'mqtt_password' $(bashio::services mqtt "p
 export MQTT_TOPIC=$(bashio::config 'mqtt_topic')
 
 export PVS_HOST=$(bashio::config 'pvs_host')
-export PVS_WS_PORT=$(bashio::config 'pvs_ws_port')
-export PVS_WS_SECURE=$(bashio::config 'pvs_ws_secure')
+export PVS_PORT=$(bashio::config 'pvs_port')
+export PVS_USER=$(bashio::config 'pvs_user')
+export PVS_PASSWORD=$(bashio::config 'pvs_password')
+export PVS_POLL_INTERVAL=$(bashio::config 'pvs_poll_interval')
+
+if bashio::var.is_empty "$PVS_PASSWORD"; then
+  bashio::exit.nok "pvs_password must be set in the add-on configuration"
+fi
 
 export ESS_HOST=$(bashio::config 'ess_host')
 export ESS_PORT=$(bashio::config 'ess_port')
@@ -20,8 +26,4 @@ export ESS_DEVICES=$(bashio::config 'ess_devices')
 # Transform newline-separated JSON objects into a JSON array and save to file
 echo "[$(echo "$ESS_DEVICES" | sed '/^\s*$/d' | paste -sd, -)]" > /data/ess_devices.json
 
-if [ "$PVS_WS_SECURE" == "true" ]; then
-  uv run pvs_recorder.py --pvs-ws-secure --ess-device-file /data/ess_devices.json
-else
-  uv run pvs_recorder.py --ess-device-file /data/ess_devices.json
-fi
+uv run pvs_recorder.py --ess-device-file /data/ess_devices.json

@@ -1,4 +1,4 @@
-"""Module for running retrieving data from a SunPower PVS WebSocket and publishing to MQTT"""
+"""Module for polling data from a SunPower PVS and publishing to MQTT"""
 
 import argparse
 import asyncio
@@ -7,19 +7,28 @@ import os
 
 from ess import ESS
 from mqtt import MqttClient
-from pvs import PVSWebSocket
+from pvs import PVSVars
 from recorder import Recorder
 
 if __name__ == "__main__":
-    # Install required packages:
-    # pip install websockets
     parser = argparse.ArgumentParser(
         prog="pvs_recorder",
         description="Get SunPower PVS from the internal PVS interface",
     )
     parser.add_argument("--pvs-host", default=os.environ.get("PVS_HOST", "172.27.153.1"))
-    parser.add_argument("--pvs-ws-port", default=os.environ.get("PVS_WS_PORT", "9002"))
-    parser.add_argument("--pvs-ws-secure", action="store_true", default=False)
+    parser.add_argument("--pvs-port", type=int, default=os.environ.get("PVS_PORT", "443"))
+    parser.add_argument("--pvs-user", default=os.environ.get("PVS_USER", "ssm_owner"))
+    parser.add_argument(
+        "--pvs-password",
+        default=os.environ.get("PVS_PASSWORD"),
+        help="PVS password (prefer the PVS_PASSWORD environment variable)",
+    )
+    parser.add_argument(
+        "--pvs-poll-interval",
+        type=float,
+        default=os.environ.get("PVS_POLL_INTERVAL", "10"),
+        help="Seconds between polls of the PVS",
+    )
     parser.add_argument("--ess-host", default=os.environ.get("ESS_HOST", "172.27.153.171"))
     parser.add_argument("--ess-port", default=os.environ.get("ESS_PORT", "502"))
     parser.add_argument("--ess-port-503", default=os.environ.get("ESS_PORT_503", "503"))
@@ -35,12 +44,18 @@ if __name__ == "__main__":
     parser.add_argument("-d", "--debug", action="store_true")
     args = parser.parse_args()
 
+    if not args.pvs_password:
+        parser.error("a PVS password is required (--pvs-password or PVS_PASSWORD)")
+
     logging.basicConfig(level=logging.INFO if not args.debug else logging.DEBUG)
     log_handler = logging.StreamHandler()
     log_formatter = logging.Formatter(
         "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
     )
     log_handler.setFormatter(log_formatter)
+
+    # httpx logs every request at INFO, which is too noisy when polling
+    logging.getLogger("httpx").setLevel(logging.DEBUG if args.debug else logging.WARNING)
 
     logger = logging.getLogger("sunpower")
     logger.addHandler(log_handler)
@@ -49,10 +64,12 @@ if __name__ == "__main__":
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
-    pvsws = PVSWebSocket(
+    pvs = PVSVars(
         host=args.pvs_host,
-        port=args.pvs_ws_port,
-        ws_secure="wss" if args.pvs_ws_secure else "ws",
+        port=args.pvs_port,
+        username=args.pvs_user,
+        password=args.pvs_password,
+        poll_interval=args.pvs_poll_interval,
     )
 
     mqtt = MqttClient(
@@ -70,7 +87,7 @@ if __name__ == "__main__":
         device_file=args.ess_device_file,
     )
 
-    recorder = Recorder(pvsws, mqtt, ess)
+    recorder = Recorder(pvs, mqtt, ess)
 
     try:
         asyncio.run(recorder.run())
